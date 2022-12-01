@@ -1,12 +1,12 @@
 pub fn part1(input: String) {
-    println!("{}", part1_impl(input))
+    println!("{}", part1_impl(&input))
 }
 
 pub fn part2(input: String) {
-    println!("{}", part2_impl(input))
+    println!("{}", part2_impl(&input))
 }
 
-fn parse_elves(input: String) -> Vec<u128> {
+fn parse_elves(input: &str) -> Vec<u128> {
     let mut elves: Vec<u128> = vec![];
     let mut current_elf = 0;
     input.lines().enumerate().for_each(|(_, line)| {
@@ -22,12 +22,12 @@ fn parse_elves(input: String) -> Vec<u128> {
     elves
 }
 
-fn part1_impl(input: String) -> u128 {
+fn part1_impl(input: &str) -> u128 {
     let elves = parse_elves(input);
     *elves.first().unwrap()
 }
 
-fn part2_impl(input: String) -> u128 {
+fn part2_impl(input: &str) -> u128 {
     let elves = parse_elves(input);
     elves[0..3].into_iter().fold(0, |acc, el| acc + el)
 }
@@ -40,11 +40,11 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        assert_eq!(part1_impl(TEST_INPUT.to_string()), 24000);
+        assert_eq!(part1_impl(TEST_INPUT), 24000);
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(part2_impl(TEST_INPUT.to_string()), 45000);
+        assert_eq!(part2_impl(TEST_INPUT), 45000);
     }
 }
