@@ -24,18 +24,9 @@ enum Intention {
 
 fn transform_to_shape(c: Option<char>) -> Shape {
     match c {
-        Some('A') => Shape::Rock,
-        Some('B') => Shape::Paper,
-        Some('C') => Shape::Scissors,
-        _ => panic!("Unknown shape"),
-    }
-}
-
-fn transform_to_player_shape(c: Option<char>) -> Shape {
-    match c {
-        Some('X') => Shape::Rock,
-        Some('Y') => Shape::Paper,
-        Some('Z') => Shape::Scissors,
+        Some('A') | Some('X') => Shape::Rock,
+        Some('B') | Some('Y') => Shape::Paper,
+        Some('C') | Some('Z') => Shape::Scissors,
         _ => panic!("Unknown shape"),
     }
 }
@@ -56,14 +47,14 @@ fn parse_lines(input: &str) -> Vec<(Shape, Shape, Intention)> {
         .map(|(_, line)| {
             (
                 transform_to_shape(line.chars().nth(0)),
-                transform_to_player_shape(line.chars().nth(2)),
+                transform_to_shape(line.chars().nth(2)),
                 transform_to_intention(line.chars().nth(2)),
             )
         })
         .collect_vec()
 }
 
-fn get_score_for_player_shape(shape: Shape) -> u128 {
+fn get_score_for_shape(shape: Shape) -> u128 {
     match shape {
         Shape::Rock => 1,
         Shape::Paper => 2,
@@ -71,7 +62,7 @@ fn get_score_for_player_shape(shape: Shape) -> u128 {
     }
 }
 
-fn get_shape_for_intention(opponent: Shape, intention: Intention) -> Shape {
+fn get_shape_matching_intention(opponent: Shape, intention: Intention) -> Shape {
     match opponent {
         Shape::Rock => match intention {
             Intention::Lose => Shape::Scissors,
@@ -114,7 +105,7 @@ fn get_score_fight(opponent: Shape, player: Shape) -> u128 {
 fn part1_impl(input: &str) -> u128 {
     let lines = parse_lines(input);
     lines.into_iter().fold(0, |score, (opponent, player, _)| {
-        score + get_score_fight(opponent, player) + get_score_for_player_shape(player)
+        score + get_score_fight(opponent, player) + get_score_for_shape(player)
     })
 }
 
@@ -124,8 +115,8 @@ fn part2_impl(input: &str) -> u128 {
         .into_iter()
         .fold(0, |score, (opponent, _, intention)| {
             score
-                + get_score_fight(opponent, get_shape_for_intention(opponent, intention))
-                + get_score_for_player_shape(get_shape_for_intention(opponent, intention))
+                + get_score_fight(opponent, get_shape_matching_intention(opponent, intention))
+                + get_score_for_shape(get_shape_matching_intention(opponent, intention))
         })
 }
 
