@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use std::char;
 
-type Ruckssack<'a> = (&'a str, &'a str, &'a str);
+// (first half, second half, all)
+type Rucksack<'a> = (&'a str, &'a str, &'a str);
 
 pub fn part1(input: String) {
     println!("{}", part1_impl(&input))
@@ -11,7 +12,7 @@ pub fn part2(input: String) {
     println!("{}", part2_impl(&input))
 }
 
-fn parse_lines(input: &str) -> Vec<Ruckssack> {
+fn parse_lines(input: &str) -> Vec<Rucksack> {
     input
         .lines()
         .enumerate()
@@ -19,8 +20,8 @@ fn parse_lines(input: &str) -> Vec<Ruckssack> {
         .collect_vec()
 }
 
-fn transform_to_priority(c: char) -> u128 {
-    let x = c as u128;
+fn transform_to_priority(c: char) -> u32 {
+    let x = c as u32;
     match x {
         97..=123 => x - 96, // lowercase letters
         65..=96 => x - 38,  // uppercase letters
@@ -28,7 +29,7 @@ fn transform_to_priority(c: char) -> u128 {
     }
 }
 
-fn find_duplicates_in_rucksack(rucksacks: &Vec<Ruckssack>) -> Vec<u128> {
+fn find_duplicates_in_rucksack(rucksacks: &Vec<Rucksack>) -> Vec<u32> {
     rucksacks
         .into_iter()
         .map(
@@ -40,7 +41,7 @@ fn find_duplicates_in_rucksack(rucksacks: &Vec<Ruckssack>) -> Vec<u128> {
         .collect_vec()
 }
 
-fn find_three_elves_groups(rucksacks: &Vec<Ruckssack>) -> Vec<u128> {
+fn find_three_elves_groups(rucksacks: &Vec<Rucksack>) -> Vec<u32> {
     rucksacks
         .chunks(3)
         .map(|a| match a {
@@ -59,18 +60,18 @@ fn find_three_elves_groups(rucksacks: &Vec<Ruckssack>) -> Vec<u128> {
         .collect_vec()
 }
 
-fn part1_impl(input: &str) -> u128 {
+fn part1_impl(input: &str) -> u32 {
     let rucksacks = parse_lines(input);
     find_duplicates_in_rucksack(&rucksacks)
         .into_iter()
-        .sum::<u128>()
+        .sum::<u32>()
 }
 
-fn part2_impl(input: &str) -> u128 {
+fn part2_impl(input: &str) -> u32 {
     let rucksacks = parse_lines(input);
     find_three_elves_groups(&rucksacks)
         .into_iter()
-        .sum::<u128>()
+        .sum::<u32>()
 }
 
 #[cfg(test)]
