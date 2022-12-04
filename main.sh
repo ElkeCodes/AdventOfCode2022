@@ -18,3 +18,6 @@
 # Your code will be passed the input and timed automatically.
 
 cargo run 1
+cargo run 2
+cargo run 3
+cargo run 4
