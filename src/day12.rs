@@ -45,6 +45,31 @@ fn is_one_higher_or_equal(c1: char, c2: char) -> bool {
     c1 as u32 + 1 == c2 as u32 || c1 == c2
 }
 
+fn get_adjacents(
+    (x, y): Coordinate,
+    height_map: &HeightMap,
+    max_x: usize,
+    max_y: usize,
+) -> Vec<Coordinate> {
+    let mut result = vec![];
+    let test_coordinate = height_map.get(&(x, y)).unwrap();
+    for test_x in cmp::max(1, x) - 1..=cmp::min(x + 1, max_x - 1) {
+        if is_one_higher_or_equal(*test_coordinate, *(height_map.get(&(test_x, y)).unwrap()))
+            && x != test_x
+        {
+            result.push((test_x, y));
+        }
+    }
+    for test_y in cmp::max(1, y) - 1..=cmp::min(y + 1, max_y - 1) {
+        if is_one_higher_or_equal(*test_coordinate, *(height_map.get(&(x, test_y)).unwrap()))
+            && y != test_y
+        {
+            result.push((x, test_y));
+        }
+    }
+    result
+}
+
 fn bfs(
     height_map: HeightMap,
     start_coordinate: Coordinate,
@@ -52,27 +77,6 @@ fn bfs(
     max_x: usize,
     max_y: usize,
 ) -> Option<Vec<Option<Coordinate>>> {
-    let get_adjacents = |(x, y): Coordinate| {
-        let mut result = vec![];
-        let test_coordinate = height_map.get(&(x, y)).unwrap();
-        println!("{:#?}", cmp::max(1, x) - 1..=cmp::min(x + 1, max_x - 1));
-        println!("{:#?}", cmp::max(1, y) - 1..=cmp::min(y + 1, max_y - 1));
-        for test_x in cmp::max(1, x) - 1..=cmp::min(x + 1, max_x - 1) {
-            if is_one_higher_or_equal(*test_coordinate, *(height_map.get(&(test_x, y)).unwrap()))
-                && x != test_x
-            {
-                result.push((test_x, y));
-            }
-        }
-        for test_y in cmp::max(1, y) - 1..=cmp::min(y + 1, max_y - 1) {
-            if is_one_higher_or_equal(*test_coordinate, *(height_map.get(&(x, test_y)).unwrap()))
-                && y != test_y
-            {
-                result.push((x, test_y));
-            }
-        }
-        result
-    };
     let mut queue = VecDeque::new();
     queue.push_back(start_coordinate);
 
@@ -88,17 +92,16 @@ fn bfs(
         println!("next node {:#?}", next_node);
         match next_node {
             Some(current_node) => {
-                for v in get_adjacents(current_node) {
-                    println!("adjacent {:#?} to {:#?}", v, current_node);
-                    if v == end_coordinate {
-                        prev.insert(v, Some(current_node)); // prev[v as usize] = Some(current_node);
+                for adjacent_node in get_adjacents(current_node, &height_map, max_x, max_y) {
+                    if adjacent_node == end_coordinate {
+                        prev.insert(adjacent_node, Some(current_node)); // prev[v as usize] = Some(current_node);
                         break 'outer;
                     }
 
-                    if !visited_vertices.contains(&v) {
-                        queue.push_back(v);
-                        visited_vertices.insert(v);
-                        prev.insert(v, Some(current_node));
+                    if !visited_vertices.contains(&adjacent_node) {
+                        queue.push_back(adjacent_node);
+                        visited_vertices.insert(adjacent_node);
+                        prev.insert(adjacent_node, Some(current_node));
                     }
                 }
             }
@@ -153,6 +156,8 @@ fn part2_impl(input: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use super::*;
 
     static TEST_INPUT: &str = "Sabqponm\nabcryxxl\naccszExk\nacctuvwj\nabdefghi";
@@ -237,5 +242,27 @@ mod tests {
         assert_eq!(is_one_higher_or_equal('a', 'c'), false);
         assert_eq!(is_one_higher_or_equal('b', 'a'), false);
         assert_eq!(is_one_higher_or_equal('b', 'b'), true);
+        assert_eq!(is_one_higher_or_equal('z', 'z'), true);
+    }
+
+    #[test]
+    fn test_get_adjacents() {
+        let (height_map, max_x, max_y, _, _) = parse_lines(TEST_INPUT);
+        assert_eq!(
+            get_adjacents((0, 0), &height_map, max_x, max_y),
+            vec![(1, 0), (0, 1)]
+        );
+        assert_eq!(
+            get_adjacents((1, 1), &height_map, max_x, max_y),
+            vec![(2, 1), (1, 2)]
+        );
+        assert_eq!(
+            get_adjacents((2, 2), &height_map, max_x, max_y),
+            vec![(1, 2), (2, 1), (2, 3)]
+        );
+        assert_eq!(
+            get_adjacents((4, 2), &height_map, max_x, max_y),
+            vec![(5, 2)]
+        );
     }
 }
