@@ -1,6 +1,6 @@
 use num::integer::Integer;
-use std::{borrow::BorrowMut, result, vec};
 use num_bigint::BigUint;
+use std::{borrow::BorrowMut, result, vec};
 
 use itertools::Itertools;
 
@@ -152,7 +152,7 @@ fn perform_test(test: Test, item: Item) -> bool {
     item % test.divisible_by == 0
 }
 
-fn perform_round(monkeys: &mut Vec<Monkey>, should_divide: bool) -> &mut Vec<Monkey> {
+fn perform_round(monkeys: &mut Vec<Monkey>, should_divide: bool, lcd: u128) -> &mut Vec<Monkey> {
     for monkey_id in 0..monkeys.len() {
         let mut move_items: Vec<(usize, Item)> = vec![];
         {
@@ -162,9 +162,9 @@ fn perform_round(monkeys: &mut Vec<Monkey>, should_divide: bool) -> &mut Vec<Mon
                 let item = monkey.items[item_id];
                 let calculated_item = perform_operation(monkey.operation, item);
                 let result_item = if should_divide {
-                    calculated_item.div_floor(&3)
+                    calculated_item.div_floor(&3) % lcd
                 } else {
-                    calculated_item
+                    calculated_item % lcd
                 };
                 if perform_test(monkey.test, result_item) {
                     move_items.push((monkey.test.true_throw_destination, result_item));
@@ -185,9 +185,12 @@ fn perform_round(monkeys: &mut Vec<Monkey>, should_divide: bool) -> &mut Vec<Mon
 
 fn part1_impl(input: &str) -> usize {
     let mut parsed_monkeys = parse_lines(input);
+    let lcd = parsed_monkeys
+        .iter_mut()
+        .fold(1, |acc, monkey| acc * monkey.test.divisible_by);
     let mut monkeys = parsed_monkeys.borrow_mut();
     for _ in 0..20 {
-        monkeys = perform_round(monkeys, true);
+        monkeys = perform_round(monkeys, true, lcd);
     }
     monkeys
         .iter()
@@ -200,9 +203,12 @@ fn part1_impl(input: &str) -> usize {
 
 fn part2_impl(input: &str) -> usize {
     let mut parsed_monkeys = parse_lines(input);
+    let lcd = parsed_monkeys
+        .iter_mut()
+        .fold(1, |acc, monkey| acc * monkey.test.divisible_by);
     let mut monkeys = parsed_monkeys.borrow_mut();
-    for _ in 0..1000 {
-        monkeys = perform_round(monkeys, false);
+    for _ in 0..10_000 {
+        monkeys = perform_round(monkeys, false, lcd);
     }
     monkeys
         .iter()
@@ -365,7 +371,7 @@ mod tests {
             },
         ];
         assert_eq!(
-            *perform_round(&mut monkeys, true),
+            *perform_round(&mut monkeys, true, 23 * 19 * 13 * 17),
             vec![
                 Monkey {
                     inspections: 2,
