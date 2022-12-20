@@ -1,8 +1,6 @@
-use itertools::Itertools;
 use std::{
     cmp,
     collections::{HashMap, HashSet, VecDeque},
-    hash::Hash,
 };
 
 type Height = char;
@@ -42,7 +40,11 @@ fn parse_lines(input: &str) -> (HeightMap, usize, usize, Coordinate, Coordinate)
 }
 
 fn is_one_higher_or_equal(c1: char, c2: char) -> bool {
-    c1 as u32 + 1 == c2 as u32 || c1 == c2
+    c1 as u32 + 1 == c2 as u32 || c1 as u32 >= c2 as u32
+}
+
+fn is_one_lower_or_equal(c2: char, c1: char) -> bool {
+    is_one_higher_or_equal(c1, c2)
 }
 
 fn get_adjacents(
@@ -50,18 +52,19 @@ fn get_adjacents(
     height_map: &HeightMap,
     max_x: usize,
     max_y: usize,
+    is_valid_adjacent: fn(char, char) -> bool,
 ) -> Vec<Coordinate> {
     let mut result = vec![];
     let test_coordinate = height_map.get(&(x, y)).unwrap();
-    for test_x in cmp::max(1, x) - 1..=cmp::min(x + 1, max_x - 1) {
-        if is_one_higher_or_equal(*test_coordinate, *(height_map.get(&(test_x, y)).unwrap()))
+    for test_x in cmp::max(1, x) - 1..=cmp::min(x + 1, max_x) {
+        if is_valid_adjacent(*test_coordinate, *(height_map.get(&(test_x, y)).unwrap()))
             && x != test_x
         {
             result.push((test_x, y));
         }
     }
-    for test_y in cmp::max(1, y) - 1..=cmp::min(y + 1, max_y - 1) {
-        if is_one_higher_or_equal(*test_coordinate, *(height_map.get(&(x, test_y)).unwrap()))
+    for test_y in cmp::max(1, y) - 1..=cmp::min(y + 1, max_y) {
+        if is_valid_adjacent(*test_coordinate, *(height_map.get(&(x, test_y)).unwrap()))
             && y != test_y
         {
             result.push((x, test_y));
@@ -73,45 +76,37 @@ fn get_adjacents(
 fn bfs(
     height_map: HeightMap,
     start_coordinate: Coordinate,
-    end_coordinate: Coordinate,
     max_x: usize,
     max_y: usize,
+    is_end_coordinate: &dyn Fn(Coordinate) -> bool,
+    is_valid_adjacent: fn(char, char) -> bool,
 ) -> Option<Vec<Option<Coordinate>>> {
     let mut queue = VecDeque::new();
-    queue.push_back(start_coordinate);
+    let mut visited_vertices = HashSet::with_capacity(height_map.len());
+    let mut prev: HashMap<Coordinate, Option<Coordinate>> =
+        HashMap::with_capacity(height_map.len());
 
-    // let mut visisted_vertices = vec![false; height_map.len()];
-    // visisted_vertices[0] = true;
-    let mut visited_vertices = HashSet::new();
+    queue.push_back(start_coordinate);
     visited_vertices.insert(start_coordinate);
 
-    let mut prev: HashMap<Coordinate, Option<Coordinate>> = HashMap::new(); // = vec![None; height_map.len()];
+    let mut last_node = start_coordinate;
+    while let Some(node) = queue.pop_front() {
+        if is_end_coordinate(node) {
+            last_node = node;
+            break;
+        }
 
-    'outer: while !queue.is_empty() {
-        let next_node = queue.pop_front();
-        println!("next node {:#?}", next_node);
-        match next_node {
-            Some(current_node) => {
-                for adjacent_node in get_adjacents(current_node, &height_map, max_x, max_y) {
-                    if adjacent_node == end_coordinate {
-                        prev.insert(adjacent_node, Some(current_node)); // prev[v as usize] = Some(current_node);
-                        break 'outer;
-                    }
-
-                    if !visited_vertices.contains(&adjacent_node) {
-                        queue.push_back(adjacent_node);
-                        visited_vertices.insert(adjacent_node);
-                        prev.insert(adjacent_node, Some(current_node));
-                    }
-                }
+        for adjacent_node in get_adjacents(node, &height_map, max_x, max_y, is_valid_adjacent) {
+            if !visited_vertices.contains(&adjacent_node) {
+                visited_vertices.insert(adjacent_node);
+                prev.insert(adjacent_node, Some(node));
+                queue.push_back(adjacent_node);
             }
-            None => panic!("impossible"),
         }
     }
 
     let mut path = Vec::new();
-    let mut at = Some(end_coordinate);
-    println!("{:#?}", prev);
+    let mut at = Some(last_node);
     while at != None {
         path.push(at);
         if prev.contains_key(&at.unwrap()) {
@@ -120,9 +115,7 @@ fn bfs(
             at = None;
         }
     }
-
     path.reverse();
-    println!("path: {:#?}", path);
 
     return match path[0] {
         Some(x) if x == start_coordinate => Some(path),
@@ -133,25 +126,35 @@ fn bfs(
 fn part1_impl(input: &str) -> usize {
     let (heightmap, max_x, max_y, start_coordinate, end_coordinate) = parse_lines(input);
 
-    // let find_destination =
-    //     |current_coordinate: Coordinate, path: Vec<Coordinate>| -> Vec<Coordinate> {
-    //         if current_coordinate == end_coordinate {
-    //             path
-    //         } else {
-    //             path
-    //         }
-    //     };
-
-    // find_destination(start_coordinate, Vec::new()).len()
-    println!(
-        "{:#?}",
-        bfs(heightmap, start_coordinate, end_coordinate, max_x, max_y)
-    );
-    0
+    let comparator = |coordinate| end_coordinate == coordinate;
+    match bfs(
+        heightmap,
+        start_coordinate,
+        max_x,
+        max_y,
+        &comparator,
+        is_one_higher_or_equal,
+    ) {
+        Some(path) => path.len() - 1,
+        None => panic!("No path found"),
+    }
 }
 
 fn part2_impl(input: &str) -> usize {
-    0
+    let (heightmap, max_x, max_y, _, end_coordinate) = parse_lines(input);
+
+    let comparator = |coordinate| *heightmap.get(&coordinate).unwrap() == 'a';
+    match bfs(
+        heightmap.clone(),
+        end_coordinate,
+        max_x,
+        max_y,
+        &comparator,
+        is_one_lower_or_equal,
+    ) {
+        Some(path) => path.len() - 1,
+        None => panic!("No path found"),
+    }
 }
 
 #[cfg(test)]
@@ -169,18 +172,9 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(part2_impl(TEST_INPUT), 2713310158);
+        assert_eq!(part2_impl(TEST_INPUT), 29);
     }
-    // Sabqponm
-    // abcryxxl
-    // accszExk
-    // acctuvwj
-    // abdefghi
-    // v..v<<<<
-    // >v.vv<<^
-    // .>vv>E^^
-    // ..v>>>^^
-    // ..>>>>>^
+
     #[test]
     fn test_parse_lines() {
         assert_eq!(
@@ -240,7 +234,9 @@ mod tests {
     fn test_is_one_higher() {
         assert_eq!(is_one_higher_or_equal('a', 'b'), true);
         assert_eq!(is_one_higher_or_equal('a', 'c'), false);
-        assert_eq!(is_one_higher_or_equal('b', 'a'), false);
+        assert_eq!(is_one_higher_or_equal('a', 'f'), false);
+        assert_eq!(is_one_higher_or_equal('b', 'a'), true);
+        assert_eq!(is_one_higher_or_equal('f', 'a'), true);
         assert_eq!(is_one_higher_or_equal('b', 'b'), true);
         assert_eq!(is_one_higher_or_equal('z', 'z'), true);
     }
@@ -249,20 +245,83 @@ mod tests {
     fn test_get_adjacents() {
         let (height_map, max_x, max_y, _, _) = parse_lines(TEST_INPUT);
         assert_eq!(
-            get_adjacents((0, 0), &height_map, max_x, max_y),
+            get_adjacents((0, 0), &height_map, max_x, max_y, is_one_higher_or_equal),
             vec![(1, 0), (0, 1)]
         );
         assert_eq!(
-            get_adjacents((1, 1), &height_map, max_x, max_y),
-            vec![(2, 1), (1, 2)]
+            get_adjacents((1, 1), &height_map, max_x, max_y, is_one_higher_or_equal),
+            vec![(0, 1), (2, 1), (1, 0), (1, 2)]
         );
         assert_eq!(
-            get_adjacents((2, 2), &height_map, max_x, max_y),
+            get_adjacents((2, 2), &height_map, max_x, max_y, is_one_higher_or_equal),
             vec![(1, 2), (2, 1), (2, 3)]
         );
         assert_eq!(
-            get_adjacents((4, 2), &height_map, max_x, max_y),
-            vec![(5, 2)]
+            get_adjacents((4, 2), &height_map, max_x, max_y, is_one_higher_or_equal),
+            vec![(3, 2), (5, 2), (4, 1), (4, 3)]
         );
+    }
+
+    #[test]
+    fn test_bfs() {
+        let (height_map, max_x, max_y, start_coordinate, end_coordinate) = parse_lines(TEST_INPUT);
+        let comparator = |x| x == end_coordinate;
+        assert_eq!(
+            bfs(
+                height_map.clone(),
+                start_coordinate,
+                max_x,
+                max_y,
+                &comparator,
+                is_one_higher_or_equal
+            ),
+            Some(vec![
+                Some((0, 0)),
+                Some((1, 0)),
+                Some((2, 0)),
+                Some((2, 1)),
+                Some((2, 2)),
+                Some((2, 3)),
+                Some((2, 4)),
+                Some((3, 4)),
+                Some((4, 4)),
+                Some((5, 4)),
+                Some((6, 4)),
+                Some((7, 4)),
+                Some((7, 3)),
+                Some((7, 2)),
+                Some((7, 1)),
+                Some((7, 0)),
+                Some((6, 0)),
+                Some((5, 0)),
+                Some((4, 0)),
+                Some((3, 0)),
+                Some((3, 1)),
+                Some((3, 2)),
+                Some((3, 3)),
+                Some((4, 3)),
+                Some((5, 3)),
+                Some((6, 3)),
+                Some((6, 2)),
+                Some((6, 1)),
+                Some((5, 1)),
+                Some((4, 1)),
+                Some((4, 2)),
+                Some((5, 2))
+            ])
+        );
+
+        let two_two_comparator = |x: Coordinate| x == (2, 2);
+        assert_eq!(
+            bfs(
+                height_map.clone(),
+                (1, 3),
+                max_x,
+                max_y,
+                &two_two_comparator,
+                is_one_higher_or_equal
+            ),
+            Some(vec![Some((1, 3)), Some((2, 3)), Some((2, 2))])
+        )
     }
 }
